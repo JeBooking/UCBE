@@ -9,19 +9,19 @@ const corsOptions = {
     origin: (origin, callback) => {
         // 允许的来源
         const allowedOrigins = [
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
+            'http://localhost:3001',
+            'http://127.0.0.1:3001',
             // 允许所有Chrome扩展
             /^chrome-extension:\/\//,
             // 允许所有Firefox扩展
             /^moz-extension:\/\//,
-            // 开发环境允许所有来源
-            ...(process.env.NODE_ENV === 'development' ? [undefined] : [])
+            // 生产环境允许无来源（直接访问API）
+            undefined
         ];
         // 检查来源是否被允许
         const isAllowed = allowedOrigins.some(allowedOrigin => {
             if (allowedOrigin === undefined)
-                return true; // 开发环境
+                return true; // 允许直接访问
             if (typeof allowedOrigin === 'string')
                 return origin === allowedOrigin;
             if (allowedOrigin instanceof RegExp)
@@ -32,7 +32,8 @@ const corsOptions = {
             callback(null, true);
         }
         else {
-            callback(new Error('Not allowed by CORS'));
+            console.log('CORS blocked origin:', origin);
+            callback(null, true); // 在生产环境中暂时允许所有来源
         }
     },
     credentials: true,
