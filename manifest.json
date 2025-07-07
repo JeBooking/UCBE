@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Universal Comments",
+  "version": "1.0.0",
+  "description": "为任何网页添加评论功能",
+  
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  
+  "host_permissions": [
+    "http://localhost:3001/*",
+    "https://your-api-domain.com/*"
+  ],
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end",
+      "all_frames": false
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Universal Comments"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "content.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
