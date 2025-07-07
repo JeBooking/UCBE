@@ -1,6 +1,6 @@
 import { Comment, CommentFormData, ApiResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'https://ucbe.vercel.app/api';
 
 // 标准化URL - 移除查询参数和片段标识符
 export function normalizeUrl(url: string): string {

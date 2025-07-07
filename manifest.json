@@ -11,7 +11,7 @@
   
   "host_permissions": [
     "http://localhost:3001/*",
-    "https://your-api-domain.com/*"
+    "https://ucbe.vercel.app/*"
   ],
   
   "content_scripts": [
