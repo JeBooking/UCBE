@@ -20,15 +20,16 @@ class UniversalComments {
     this.container = document.createElement('div');
     this.container.id = 'universal-comments-root';
     
-    // 确保容器不会被网站的CSS影响
+    // 确保容器不会被网站的CSS影响 - 改为浮动窗口
     this.container.style.cssText = `
       position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
+      top: 20px !important;
+      right: 20px !important;
+      width: 400px !important;
+      max-height: 600px !important;
       pointer-events: none !important;
       z-index: 2147483647 !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     `;
     
     document.body.appendChild(this.container);

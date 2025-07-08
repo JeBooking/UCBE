@@ -7,21 +7,30 @@ interface CommentFormProps {
   parentId?: string;
   onCancel?: () => void;
   isSubmitting?: boolean;
+  defaultUsername?: string;
+  hideUsernameField?: boolean;
 }
 
-const CommentForm: React.FC<CommentFormProps> = ({ 
-  onSubmit, 
-  parentId, 
-  onCancel, 
-  isSubmitting = false 
+const CommentForm: React.FC<CommentFormProps> = ({
+  onSubmit,
+  parentId,
+  onCancel,
+  isSubmitting = false,
+  defaultUsername = '',
+  hideUsernameField = false
 }) => {
   const [content, setContent] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUsername();
-  }, []);
+    if (defaultUsername) {
+      setDisplayName(defaultUsername);
+      setIsLoading(false);
+    } else {
+      loadUsername();
+    }
+  }, [defaultUsername]);
 
   const loadUsername = async () => {
     try {
@@ -79,17 +88,19 @@ const CommentForm: React.FC<CommentFormProps> = ({
         </div>
       )}
       
-      <div className="uc-form-group">
-        <label className="uc-form-label">用户名:</label>
-        <input
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="uc-form-input"
-          placeholder="输入你的用户名"
-          required
-        />
-      </div>
+      {!hideUsernameField && (
+        <div className="uc-form-group">
+          <label className="uc-form-label">用户名:</label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="uc-form-input"
+            placeholder="输入你的用户名"
+            required
+          />
+        </div>
+      )}
       
       <div className="uc-form-group">
         <label className="uc-form-label">评论内容:</label>

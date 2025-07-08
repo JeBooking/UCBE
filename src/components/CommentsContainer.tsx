@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Comment, CommentFormData } from '../types';
-import { getComments, addComment } from '../utils/api';
+import { getComments, addComment, normalizeUrl } from '../utils/api';
 import { getDeviceId, saveCurrentUsername } from '../utils/deviceId';
 import CommentItem from './CommentItem';
 import CommentForm from './CommentForm';
@@ -19,6 +19,8 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [currentUsername, setCurrentUsername] = useState<string>('');
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,10 +29,12 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
 
   const initializeComponent = async () => {
     try {
-      console.log('Initializing component...');
       const id = await getDeviceId();
-      console.log('Device ID obtained:', id);
       setDeviceId(id);
+
+      // 获取保存的用户名
+      const savedUsername = localStorage.getItem('uc-username') || '';
+      setCurrentUsername(savedUsername);
 
       // 直接传递 deviceId 给 loadComments，不依赖状态更新
       await loadComments(id);
@@ -42,12 +46,10 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
 
   const loadComments = async (currentDeviceId?: string) => {
     const useDeviceId = currentDeviceId || deviceId;
-    console.log('Loading comments for URL:', url, 'Device ID:', useDeviceId);
     setIsLoading(true);
     setError(null);
 
     if (!useDeviceId) {
-      console.error('No device ID available for loading comments');
       setError('设备ID未初始化');
       setIsLoading(false);
       return;
@@ -55,9 +57,6 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
 
     try {
       const result = await getComments(url, useDeviceId);
-      console.log('Comments API result:', result);
-
-      console.log('Processing API result:', result);
 
       if (result.success && result.data) {
         // 处理双重包装的数据结构
@@ -72,12 +71,9 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
           commentsData = Array.isArray(innerData) ? innerData : [];
         }
 
-        console.log('Comments loaded successfully:', commentsData.length, 'comments');
-        console.log('Comments data:', commentsData);
         setComments(commentsData);
       } else {
         const errorMsg = result.error || '加载评论失败';
-        console.error('Failed to load comments:', errorMsg);
         setError(errorMsg);
         setComments([]);
       }
@@ -90,34 +86,39 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
     }
   };
 
+  const handleUsernameChange = (username: string) => {
+    setCurrentUsername(username);
+    localStorage.setItem('uc-username', username);
+    saveCurrentUsername(username);
+  };
+
   const handleSubmitComment = async (formData: CommentFormData) => {
     if (!deviceId) {
-      console.error('No device ID available');
       alert('设备ID未初始化，请刷新页面重试');
       return;
     }
 
-    console.log('Submitting comment:', formData);
+    // 使用当前设置的用户名，如果没有则使用表单中的用户名
+    const finalFormData = {
+      ...formData,
+      display_name: currentUsername || formData.display_name || '匿名用户'
+    };
+
     setIsSubmitting(true);
 
     try {
       // 保存用户名到本地存储
-      await saveCurrentUsername(formData.display_name);
+      if (finalFormData.display_name !== '匿名用户') {
+        await saveCurrentUsername(finalFormData.display_name);
+        setCurrentUsername(finalFormData.display_name);
+      }
 
-      console.log('Calling addComment API...');
-      const result = await addComment(url, formData, deviceId);
-      console.log('Add comment result:', result);
+      const result = await addComment(url, finalFormData, deviceId);
 
       if (result.success) {
-        console.log('Comment submitted successfully, reloading comments...');
         await loadComments(); // 重新加载评论列表
         setReplyingTo(null); // 清除回复状态
-
-        if (!formData.parent_id) {
-          alert('评论发布成功！');
-        }
       } else {
-        console.error('Failed to submit comment:', result.error);
         alert(result.error || '发布评论失败');
       }
     } catch (error) {
@@ -248,6 +249,19 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ url, onClose }) =
       <div className="uc-comments-header" onMouseDown={handleMouseDown}>
         <h3 className="uc-comments-title">💬 页面评论</h3>
         <button className="uc-close-btn" onClick={onClose}>✕</button>
+      </div>
+
+      {/* 网址信息 */}
+      <div className="uc-info-section">
+        <div className="uc-url-info">
+          <span className="uc-url-label">🌐 评论目标:</span>
+          <span className="uc-url-text" title={normalizeUrl(url)}>
+            {(() => {
+              const normalizedUrl = normalizeUrl(url);
+              return normalizedUrl.length > 50 ? normalizedUrl.substring(0, 50) + '...' : normalizedUrl;
+            })()}
+          </span>
+        </div>
       </div>
       
       <div className="uc-comments-content">

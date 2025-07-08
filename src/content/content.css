@@ -36,6 +36,41 @@
   border-radius: 10px 10px 0 0 !important;
 }
 
+/* 信息区域样式 */
+.uc-info-section {
+  padding: 12px 16px !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #e1e5e9 !important;
+  font-size: 12px !important;
+}
+
+.uc-url-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.uc-url-label {
+  font-weight: 600 !important;
+  color: #495057 !important;
+  min-width: 70px !important;
+}
+
+.uc-url-text {
+  color: #6c757d !important;
+  font-family: monospace !important;
+  background: white !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  border: 1px solid #dee2e6 !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+
+
 .uc-comments-title {
   margin: 0 !important;
   font-size: 16px !important;

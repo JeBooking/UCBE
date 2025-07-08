@@ -12,10 +12,21 @@ export function normalizeUrl(url: string): string {
   }
 }
 
+// 简单的内存缓存
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30秒缓存
+
 // API请求封装
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   try {
-    console.log('API Request:', endpoint, 'Options:', options);
+    // 对于GET请求，检查缓存
+    if (!options.method || options.method === 'GET') {
+      const cacheKey = `${endpoint}${JSON.stringify(options.headers || {})}`;
+      const cached = cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return { success: true, data: cached.data };
+      }
+    }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
@@ -25,17 +36,20 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       ...options,
     });
 
-    console.log('API Response status:', response.status);
     const data = await response.json();
-    console.log('API Response data:', data);
 
     if (!response.ok) {
       return { success: false, error: data.error || 'Request failed' };
     }
 
+    // 缓存GET请求的结果
+    if (!options.method || options.method === 'GET') {
+      const cacheKey = `${endpoint}${JSON.stringify(options.headers || {})}`;
+      cache.set(cacheKey, { data, timestamp: Date.now() });
+    }
+
     return { success: true, data };
   } catch (error) {
-    console.error('API Request error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network error'
@@ -53,14 +67,28 @@ export async function getComments(url: string, deviceId: string): Promise<ApiRes
   });
 }
 
+// 清除相关缓存
+function clearCommentsCache(url: string) {
+  const normalizedUrl = normalizeUrl(url);
+  const keysToDelete: string[] = [];
+
+  for (const [key] of cache) {
+    if (key.includes(`/comments?url=${encodeURIComponent(normalizedUrl)}`)) {
+      keysToDelete.push(key);
+    }
+  }
+
+  keysToDelete.forEach(key => cache.delete(key));
+}
+
 // 添加评论
 export async function addComment(
-  url: string, 
-  commentData: CommentFormData, 
+  url: string,
+  commentData: CommentFormData,
   deviceId: string
 ): Promise<ApiResponse<Comment>> {
   const normalizedUrl = normalizeUrl(url);
-  return apiRequest<Comment>('/comments', {
+  const result = await apiRequest<Comment>('/comments', {
     method: 'POST',
     body: JSON.stringify({
       url: normalizedUrl,
@@ -70,6 +98,13 @@ export async function addComment(
       device_id: deviceId,
     }),
   });
+
+  // 清除相关缓存，确保下次获取最新数据
+  if (result.success) {
+    clearCommentsCache(url);
+  }
+
+  return result;
 }
 
 // 点赞/取消点赞评论

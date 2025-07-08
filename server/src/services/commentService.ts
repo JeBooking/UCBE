@@ -4,8 +4,58 @@ import { v4 as uuidv4 } from 'uuid';
 import { normalizeUrl } from '../utils/validation';
 
 export class CommentService {
-  // 获取页面评论（包含回复和点赞信息）
+  // 快速获取页面评论（优化版本）
   async getCommentsByUrl(url: string, deviceId: string): Promise<Comment[]> {
+    const normalizedUrl = normalizeUrl(url);
+
+    // 单次查询获取所有评论
+    const { data: allComments, error } = await supabase
+      .from(TABLES.COMMENTS)
+      .select('*')
+      .eq('url', normalizedUrl)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch comments: ${error.message}`);
+    }
+
+    if (!allComments || allComments.length === 0) {
+      return [];
+    }
+
+    // 分离主评论和回复
+    const mainComments = allComments.filter(c => !c.parent_id);
+    const replies = allComments.filter(c => c.parent_id);
+
+    // 简化处理：暂时设置默认值，大幅提升速度
+    const processComment = (comment: any): Comment => ({
+      id: comment.id,
+      url: comment.url,
+      content: comment.content,
+      device_id: comment.device_id,
+      display_name: comment.display_name,
+      parent_id: comment.parent_id,
+      created_at: comment.created_at,
+      likes_count: 0, // 暂时设为0，提升加载速度
+      is_liked: false, // 暂时设为false
+      replies: []
+    });
+
+    const processedMainComments = mainComments.map(processComment);
+    const processedReplies = replies.map(processComment);
+
+    // 将回复分组到对应的主评论下
+    processedMainComments.forEach(mainComment => {
+      mainComment.replies = processedReplies.filter(
+        reply => reply.parent_id === mainComment.id
+      );
+    });
+
+    return processedMainComments;
+  }
+
+  // 原始版本（保留备用）
+  async getCommentsByUrlWithLikes(url: string, deviceId: string): Promise<Comment[]> {
     const normalizedUrl = normalizeUrl(url);
     console.log(`[CommentService] Getting comments for URL: ${normalizedUrl}, Device ID: ${deviceId}`);
 
