@@ -2,11 +2,26 @@ import { Comment, CommentFormData, ApiResponse } from '../types';
 
 const API_BASE_URL = 'https://ucbe.vercel.app/api';
 
-// 标准化URL - 移除查询参数和片段标识符
+// 标准化URL - 保留重要的查询参数，移除片段标识符和无关参数
 export function normalizeUrl(url: string): string {
   try {
     const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+
+    // 移除片段标识符
+    urlObj.hash = '';
+
+    // 移除一些常见的跟踪参数，但保留内容相关的参数
+    const paramsToRemove = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'fbclid', 'gclid', 'ref', 'source', 'from', 'share',
+      '_ga', '_gid', 'mc_cid', 'mc_eid'
+    ];
+
+    paramsToRemove.forEach(param => {
+      urlObj.searchParams.delete(param);
+    });
+
+    return urlObj.toString();
   } catch {
     return url;
   }

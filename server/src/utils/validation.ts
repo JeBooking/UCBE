@@ -78,12 +78,26 @@ export const validateDeleteComment = () => [
     .withMessage('Invalid device ID')
 ];
 
-// URL标准化函数
+// URL标准化函数 - 保留重要的查询参数，移除片段标识符和无关参数
 export const normalizeUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);
-    // 移除查询参数和片段标识符，只保留协议、主机和路径
-    return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+
+    // 移除片段标识符
+    urlObj.hash = '';
+
+    // 移除一些常见的跟踪参数，但保留内容相关的参数
+    const paramsToRemove = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'fbclid', 'gclid', 'ref', 'source', 'from', 'share',
+      '_ga', '_gid', 'mc_cid', 'mc_eid'
+    ];
+
+    paramsToRemove.forEach(param => {
+      urlObj.searchParams.delete(param);
+    });
+
+    return urlObj.toString();
   } catch {
     throw new Error('Invalid URL format');
   }

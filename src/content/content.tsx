@@ -7,11 +7,14 @@ class UniversalComments {
   private container: HTMLDivElement | null = null;
   private root: any = null;
   private isVisible: boolean = false;
+  private currentUrl: string = '';
 
   constructor() {
     console.log('Universal Comments content script initializing...');
+    this.currentUrl = window.location.href;
     this.init();
     this.setupMessageListener();
+    this.setupUrlChangeListener();
     console.log('Universal Comments content script initialized successfully');
   }
 
@@ -65,6 +68,79 @@ class UniversalComments {
     });
   }
 
+  private setupUrlChangeListener() {
+    // 监听URL变化（适用于SPA应用）
+    let lastUrl = window.location.href;
+
+    // 使用MutationObserver监听DOM变化，间接检测URL变化
+    const observer = new MutationObserver(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        console.log('URL changed from', lastUrl, 'to', currentUrl);
+        lastUrl = currentUrl;
+        this.handleUrlChange(currentUrl);
+      }
+    });
+
+    // 开始观察
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // 监听popstate事件（浏览器前进后退）
+    window.addEventListener('popstate', () => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        console.log('URL changed via popstate from', lastUrl, 'to', currentUrl);
+        lastUrl = currentUrl;
+        this.handleUrlChange(currentUrl);
+      }
+    });
+
+    // 监听pushstate和replacestate（SPA导航）
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    const self = this;
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args);
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        console.log('URL changed via pushState from', lastUrl, 'to', currentUrl);
+        lastUrl = currentUrl;
+        // 延迟执行，确保页面状态已更新
+        setTimeout(() => {
+          self.handleUrlChange(currentUrl);
+        }, 100);
+      }
+    };
+
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(history, args);
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        console.log('URL changed via replaceState from', lastUrl, 'to', currentUrl);
+        lastUrl = currentUrl;
+        // 延迟执行，确保页面状态已更新
+        setTimeout(() => {
+          self.handleUrlChange(currentUrl);
+        }, 100);
+      }
+    };
+  }
+
+  private handleUrlChange(newUrl: string) {
+    console.log('Handling URL change to:', newUrl);
+    this.currentUrl = newUrl;
+
+    // 如果评论面板是打开的，自动刷新评论
+    if (this.isVisible && this.root) {
+      console.log('Comments panel is visible, refreshing comments for new URL');
+      this.renderComments();
+    }
+  }
+
   private toggleComments() {
     console.log('Toggle comments called, current visibility:', this.isVisible);
     this.isVisible = !this.isVisible;
@@ -91,14 +167,16 @@ class UniversalComments {
     // 启用指针事件以便用户交互
     this.container.style.pointerEvents = 'auto';
 
-    const currentUrl = window.location.href;
-    console.log('Current URL:', currentUrl);
+    // 更新当前URL
+    this.currentUrl = window.location.href;
+    console.log('Current URL:', this.currentUrl);
 
     try {
       this.root.render(
         <ErrorBoundary>
           <CommentsContainer
-            url={currentUrl}
+            key={this.currentUrl} // 使用URL作为key，确保URL变化时重新渲染
+            url={this.currentUrl}
             onClose={() => this.hideComments()}
           />
         </ErrorBoundary>
